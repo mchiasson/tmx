@@ -11,7 +11,7 @@
 #include <libxml/xmlreader.h>
 
 #include "tmx.h"
-#include "tsx.h"
+#include "tmx_rc.h"
 #include "tmx_utils.h"
 
 /*
@@ -782,7 +782,7 @@ static int parse_tileset(xmlTextReaderPtr reader, tmx_tileset *ts_addr, const ch
 	return 1;
 }
 
-static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_headadr, tmx_tileset_manager *ts_mgr, const char *filename) {
+static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_headadr, tmx_resource_manager *rc_mgr, const char *filename) {
 	tmx_tileset_list *res_list = NULL;
 	tmx_tileset *res = NULL;
 	int ret;
@@ -804,8 +804,8 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 
 	/* External Tileset */
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"source"))) { /* source */
-		if (ts_mgr) {
-			res = (tmx_tileset*) hashtable_get((void*)ts_mgr, value);
+		if (rc_mgr) {
+			res = (tmx_tileset*) hashtable_get((void*)rc_mgr, value);
 			if (res) {
 				res_list->tileset = res;
 				return 1;
@@ -816,8 +816,8 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 			return 0;
 		}
 		res_list->tileset = res;
-		if (ts_mgr) {
-			hashtable_set((void*)ts_mgr, value, (void*)res, tileset_deallocator);
+		if (rc_mgr) {
+			hashtable_set((void*)rc_mgr, value, (void*)res, tileset_deallocator);
 		}
 		else {
 			res->is_embedded = 1;
@@ -843,7 +843,7 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 	return parse_tileset(reader, res, filename);
 }
 
-static tmx_map *parse_root_map(xmlTextReaderPtr reader, tmx_tileset_manager *ts_mgr, const char *filename) {
+static tmx_map *parse_root_map(xmlTextReaderPtr reader, tmx_resource_manager *rc_mgr, const char *filename) {
 	tmx_map *res = NULL;
 	int curr_depth, flag;
 	const char *name;
@@ -958,7 +958,7 @@ static tmx_map *parse_root_map(xmlTextReaderPtr reader, tmx_tileset_manager *ts_
 		if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) {
 			name = (char*)xmlTextReaderConstName(reader);
 			if (!strcmp(name, "tileset")) {
-				if (!parse_tileset_list(reader, &(res->ts_head), ts_mgr, filename)) goto cleanup;
+				if (!parse_tileset_list(reader, &(res->ts_head), rc_mgr, filename)) goto cleanup;
 			} else if (!strcmp(name, "properties")) {
 				if (!parse_properties(reader, &(res->properties))) goto cleanup;
 			} else if ((type = parse_layer_type(name)) != L_NONE) {
@@ -990,7 +990,7 @@ static tmx_tileset* parse_root_tileset(xmlTextReaderPtr reader, const char *file
 	Public TMX load functions
 */
 
-tmx_map *parse_xml(tmx_tileset_manager *ts_mgr, const char *filename) {
+tmx_map *parse_xml(tmx_resource_manager *rc_mgr, const char *filename) {
 	xmlTextReaderPtr reader;
 	tmx_map *res = NULL;
 
@@ -998,7 +998,7 @@ tmx_map *parse_xml(tmx_tileset_manager *ts_mgr, const char *filename) {
 
 	if ((reader = xmlReaderForFile(filename, NULL, 0))) {
 		if (check_reader(reader)) {
-			res = parse_root_map(reader, ts_mgr, filename);
+			res = parse_root_map(reader, rc_mgr, filename);
 		}
 		xmlFreeTextReader(reader);
 	} else {
@@ -1008,7 +1008,7 @@ tmx_map *parse_xml(tmx_tileset_manager *ts_mgr, const char *filename) {
 	return res;
 }
 
-tmx_map* parse_xml_buffer(tmx_tileset_manager *ts_mgr, const char *buffer, int len) {
+tmx_map* parse_xml_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len) {
 	xmlTextReaderPtr reader;
 	tmx_map *res = NULL;
 
@@ -1016,7 +1016,7 @@ tmx_map* parse_xml_buffer(tmx_tileset_manager *ts_mgr, const char *buffer, int l
 
 	if ((reader = xmlReaderForMemory(buffer, len, NULL, NULL, 0))) {
 		if (check_reader(reader)) {
-			res = parse_root_map(reader, ts_mgr, NULL);
+			res = parse_root_map(reader, rc_mgr, NULL);
 		}
 		xmlFreeTextReader(reader);
 	} else {
@@ -1026,7 +1026,7 @@ tmx_map* parse_xml_buffer(tmx_tileset_manager *ts_mgr, const char *buffer, int l
 	return res;
 }
 
-tmx_map* parse_xml_fd(tmx_tileset_manager *ts_mgr, int fd) {
+tmx_map* parse_xml_fd(tmx_resource_manager *rc_mgr, int fd) {
 	xmlTextReaderPtr reader;
 	tmx_map *res = NULL;
 
@@ -1034,7 +1034,7 @@ tmx_map* parse_xml_fd(tmx_tileset_manager *ts_mgr, int fd) {
 
 	if ((reader = xmlReaderForFd(fd, NULL, NULL, 0))) {
 		if (check_reader(reader)) {
-			res = parse_root_map(reader, ts_mgr, NULL);
+			res = parse_root_map(reader, rc_mgr, NULL);
 		}
 		xmlFreeTextReader(reader);
 	} else {
@@ -1044,7 +1044,7 @@ tmx_map* parse_xml_fd(tmx_tileset_manager *ts_mgr, int fd) {
 	return res;
 }
 
-tmx_map* parse_xml_callback(tmx_tileset_manager *ts_mgr, tmx_read_functor callback, void *userdata) {
+tmx_map* parse_xml_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata) {
 	xmlTextReaderPtr reader;
 	tmx_map *res = NULL;
 
@@ -1052,7 +1052,7 @@ tmx_map* parse_xml_callback(tmx_tileset_manager *ts_mgr, tmx_read_functor callba
 
 	if ((reader = xmlReaderForIO((xmlInputReadCallback)callback, NULL, userdata, NULL, NULL, 0))) {
 		if (check_reader(reader)) {
-			res = parse_root_map(reader, ts_mgr, NULL);
+			res = parse_root_map(reader, rc_mgr, NULL);
 		}
 		xmlFreeTextReader(reader);
 	} else {

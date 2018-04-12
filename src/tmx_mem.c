@@ -7,7 +7,6 @@
 #include <libxml/xmlmemory.h>
 
 #include "tmx.h"
-#include "tsx.h"
 #include "tmx_utils.h"
 
 void set_alloc_functions() {

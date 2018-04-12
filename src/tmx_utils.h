@@ -3,7 +3,7 @@
 #pragma once
 
 #include "tmx.h"
-
+#include "tmx_rc.h"
 
 #ifndef TMXUTILS_H
 #define TMXUTILS_H
@@ -18,10 +18,10 @@
 /*
 	XML Parser implementation - tmx_xml.c
 */
-tmx_map* parse_xml(tmx_tileset_manager *ts_mgr, const char *filename);
-tmx_map* parse_xml_buffer(tmx_tileset_manager *ts_mgr, const char *buffer, int len);
-tmx_map* parse_xml_fd(tmx_tileset_manager *ts_mgr, int fd);
-tmx_map* parse_xml_callback(tmx_tileset_manager *ts_mgr, tmx_read_functor callback, void *userdata);
+tmx_map* parse_xml(tmx_resource_manager *rc_mgr, const char *filename);
+tmx_map* parse_xml_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len);
+tmx_map* parse_xml_fd(tmx_resource_manager *rc_mgr, int fd);
+tmx_map* parse_xml_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata);
 
 tmx_tileset* parse_tsx_xml(const char *filename);
 tmx_tileset* parse_tsx_xml_buffer(const char *buffer, int len);

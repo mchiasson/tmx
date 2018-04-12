@@ -6,8 +6,6 @@
 
 #include <libxml/hash.h>
 
-#include "tmx.h"
-#include "tsx.h"
 #include "tmx_utils.h"
 
 void* mk_hashtable(unsigned int initial_size) {

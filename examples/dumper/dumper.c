@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include <tmx.h>
-#include <tsx.h>
+#include <tmx_rc.h>
 
 #define str_bool(b) (b==0? "false": "true")
 
@@ -357,7 +357,7 @@ void printUsage(const char *arg0) {
 
 int main(int argc, char *argv[]) {
 	tmx_map *m = NULL;
-	tmx_tileset_manager *ts_mgr = NULL;
+	tmx_resource_manager *rc_mgr = NULL;
 	int fd, it;
 	FILE *file;
 	long size;
@@ -379,8 +379,8 @@ int main(int argc, char *argv[]) {
 				return EXIT_SUCCESS;
 			}
 			else if (it == 1 && !strcmp("--use-tileset-mgr", argv[it])) {
-				ts_mgr = tmx_make_tileset_manager();
-				if (!ts_mgr) {
+				rc_mgr = tmx_make_resource_manager();
+				if (!rc_mgr) {
 					tmx_perror("error");
 				}
 			}
@@ -391,11 +391,11 @@ int main(int argc, char *argv[]) {
 				}
 				else {
 					if (isMap(argv[it])) {
-						m = tmx_tsmgr_load_fd(ts_mgr, fd);
+						m = tmx_rcmgr_load_fd(rc_mgr, fd);
 						dump_map(m);
 					}
 					else {
-						tmx_load_tileset_fd(ts_mgr, fd, argv[it]);
+						tmx_load_tileset_fd(rc_mgr, fd, argv[it]);
 					}
 					close(fd);
 				}
@@ -418,11 +418,11 @@ int main(int argc, char *argv[]) {
 					}
 					else {
 						if (isMap(argv[it])) {
-							m = tmx_tsmgr_load_buffer(ts_mgr, buffer, size);
+							m = tmx_rcmgr_load_buffer(rc_mgr, buffer, size);
 							dump_map(m);
 						}
 						else {
-							tmx_load_tileset_buffer(ts_mgr, buffer, size, argv[it]);
+							tmx_load_tileset_buffer(rc_mgr, buffer, size, argv[it]);
 						}
 					}
 
@@ -437,11 +437,11 @@ int main(int argc, char *argv[]) {
 				}
 				else {
 					if (isMap(argv[it])) {
-						m = tmx_tsmgr_load_callback(ts_mgr, read_function, file);
+						m = tmx_rcmgr_load_callback(rc_mgr, read_function, file);
 						dump_map(m);
 					}
 					else {
-						tmx_load_tileset_callback(ts_mgr, read_function, file, argv[it]);
+						tmx_load_tileset_callback(rc_mgr, read_function, file, argv[it]);
 					}
 					fclose(file);
 				}
@@ -453,17 +453,17 @@ int main(int argc, char *argv[]) {
 		}
 		else {
 			if (isMap(argv[it])) {
-				m = tmx_tsmgr_load(ts_mgr, argv[it]);
+				m = tmx_rcmgr_load(rc_mgr, argv[it]);
 				dump_map(m);
 			}
 			else {
-				tmx_load_tileset(ts_mgr, argv[it]);
+				tmx_load_tileset(rc_mgr, argv[it]);
 			}
 		}
 	}
 
-	if (ts_mgr) {
-		tmx_free_tileset_manager(ts_mgr);
+	if (rc_mgr) {
+		tmx_free_resource_manager(rc_mgr);
 	}
 
 	printf("%d mem alloc not freed\n", mal_vs_free_count);
