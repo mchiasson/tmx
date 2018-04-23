@@ -88,6 +88,12 @@ tmx_tileset_list* alloc_tileset_list(void) {
 	return (tmx_tileset_list*)node_alloc(sizeof(tmx_tileset_list));
 }
 
+tmx_template* alloc_template(void) {
+	tmx_template* res = (tmx_template*)node_alloc(sizeof(tmx_template));
+	res->object = alloc_object();
+	return res;
+}
+
 tmx_map* alloc_map(void) {
 	return (tmx_map*)node_alloc(sizeof(tmx_map));
 }
@@ -132,6 +138,9 @@ void free_obj(tmx_object *o) {
 		}
 		tmx_free_func(o->type);
 		free_props(o->properties);
+		if (o->template && o->template->is_embedded) {
+			free_template(o->template);
+		}
 		tmx_free_func(o);
 	}
 }
@@ -206,4 +215,12 @@ void free_ts_list(tmx_tileset_list *tsl) {
 		}
 		tmx_free_func(tsl);
 	}
+}
+
+void free_template(tmx_template *tmpl) {
+	if (tmpl) {
+		free_ts_list(tmpl->tileset_ref);
+		free_obj(tmpl->object);
+	}
+	tmx_free_func(tmpl);
 }

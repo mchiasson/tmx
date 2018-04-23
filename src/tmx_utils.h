@@ -44,6 +44,7 @@ tmx_layer*        alloc_layer(void);
 tmx_tile*         alloc_tiles(int count);
 tmx_tileset*      alloc_tileset(void);
 tmx_tileset_list* alloc_tileset_list(void);
+tmx_template*     alloc_template(void);
 tmx_map*          alloc_map(void);
 tmx_tile*         alloc_tile(void);
 
@@ -56,6 +57,7 @@ void free_layers(tmx_layer *l);
 void free_tiles(tmx_tile *t, int tilecount);
 void free_ts(tmx_tileset *ts);
 void free_ts_list(tmx_tileset_list *tsl);
+void free_template(tmx_template *tmpl);
 
 /*
 	Misc - tmx_utils.c
@@ -104,6 +106,7 @@ void  free_hashtable(void *hashtable, hashtable_entry_deallocator deallocator);
 
 void property_deallocator(void *val, const char *key);
 void tileset_deallocator(void *val, const char *key);
+void template_deallocator(void *val, const char *key);
 
 /*
 	Error handling - tmx_err.c

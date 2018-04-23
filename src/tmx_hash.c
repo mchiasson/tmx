@@ -42,3 +42,7 @@ void property_deallocator(void *val, const char *key UNUSED) {
 void tileset_deallocator(void *val, const char *key UNUSED) {
 	free_ts((tmx_tileset*)val);
 }
+
+void template_deallocator(void *val, const char *key UNUSED) {
+	free_template((tmx_template*)val);
+}

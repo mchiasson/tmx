@@ -52,7 +52,7 @@ enum tmx_stagger_index {SI_NONE, SI_EVEN, SI_ODD};
 enum tmx_stagger_axis {SA_NONE, SA_X, SA_Y};
 enum tmx_layer_type {L_NONE, L_LAYER, L_OBJGR, L_IMAGE, L_GROUP};
 enum tmx_objgr_draworder {G_NONE, G_INDEX, G_TOPDOWN};
-enum tmx_obj_type {OT_NONE, OT_SQUARE, OT_POLYGON, OT_POLYLINE, OT_ELLIPSE, OT_TILE, OT_TEXT};
+enum tmx_obj_type {OT_NONE, OT_SQUARE, OT_POLYGON, OT_POLYLINE, OT_ELLIPSE, OT_TILE, OT_TEXT, OT_POINT};
 enum tmx_property_type {PT_NONE, PT_INT, PT_FLOAT, PT_BOOL, PT_STRING, PT_COLOR, PT_FILE};
 enum tmx_horizontal_align {HA_NONE, HA_LEFT, HA_CENTER, HA_RIGHT};
 enum tmx_vertical_align {VA_NONE, VA_TOP, VA_CENTER, VA_BOTTOM};
@@ -68,6 +68,7 @@ typedef struct _tmx_shape tmx_shape;
 typedef struct _tmx_text tmx_text;
 typedef struct _tmx_obj tmx_object;
 typedef struct _tmx_objgr tmx_object_group;
+typedef struct _tmx_templ tmx_template;
 typedef struct _tmx_layer tmx_layer;
 typedef struct _tmx_map tmx_map;
 typedef void tmx_properties; /* hashtable, use function tmx_get_property(...) */
@@ -185,6 +186,7 @@ struct _tmx_obj { /* <object> */
 	double rotation;
 
 	char *name, *type;
+	tmx_template *template;
 	tmx_properties *properties;
 	tmx_object *next;
 };
@@ -193,6 +195,12 @@ struct _tmx_objgr { /* <objectgroup> */
 	unsigned int color; /* bytes : RGB */
 	enum tmx_objgr_draworder draworder;
 	tmx_object *head;
+};
+
+struct _tmx_templ { /* <template> */
+	int is_embedded; /* used internally to free this node */
+	tmx_tileset_list *tileset_ref; /* not null if object is a tile, is a singleton list */
+	tmx_object *object; /* never null */
 };
 
 struct _tmx_layer { /* <layer> or <imagelayer> or <objectgroup> */

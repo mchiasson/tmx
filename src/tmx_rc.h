@@ -25,15 +25,18 @@ extern "C" {
 /* Resource Manager type (private hashtable) */
 typedef void tmx_resource_manager;
 
-/* Creates a Resource Manager that holds a hashtable of loaded tilesets
-   Only external tilesets (in .TSX files) are indexed in a Resource Manager
-   This is particularly useful to only load once tilesets needed by many maps
-   The key is the `source` attribute of a tileset element */
+/* Creates a Resource Manager that holds a hashtable of loaded resources
+   Only external tilesets (in .TSX files) and object templates (in .TX files)
+   are indexed in a Resource Manager
+   This is particularly useful to load only once tilesets and templates
+   referenced in multiple maps
+   The key is the `source` attribute of a tileset element or the `template`
+   attribute of an object element */
 TMXEXPORT tmx_resource_manager* tmx_make_resource_manager();
 
-/* Frees the Resource Manager and all its loaded Tilesets
-   All maps holding a pointer to external tileset loaded by the given manager
-   now hold a pointer to freed memory */
+/* Frees the Resource Manager and all its loaded tilesets and object templates
+   All maps holding a pointer to external tileset or an object template loaded
+   by the given manager now hold a pointer to freed memory */
 TMXEXPORT void tmx_free_resource_manager(tmx_resource_manager *rc_mgr);
 
 /* Loads a tileset from file at `path` and stores it into given Resource Manager

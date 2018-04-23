@@ -126,7 +126,9 @@ void dump_prop(tmx_properties *p, int depth) {
 void print_obj_type(enum tmx_obj_type type) {
 	switch(type) {
 		case OT_NONE:     printf("none");     break;
+		case OT_TILE:     printf("tile");     break;
 		case OT_TEXT:     printf("text");     break;
+		case OT_POINT:    printf("point");    break;
 		case OT_SQUARE:   printf("square");   break;
 		case OT_ELLIPSE:  printf("ellipse");  break;
 		case OT_POLYGON:  printf("polygon");  break;
@@ -139,6 +141,20 @@ void dump_points(double **p, int pl) {
 	int i;
 	for (i=0; i<pl; i++) {
 		printf(" (%f, %f)", p[i][0], p[i][1]);
+	}
+}
+
+void dump_objects(tmx_object *o, int depth);
+
+void dump_template(tmx_template *t, int depth) {
+	char padding[11]; mk_padding(padding, depth);
+
+	printf("\n%s" "template={", padding);
+	if (!t) {
+		printf(" (NULL) }");
+	} else {
+		dump_objects(t->object, depth+1);
+		printf("\n%s}", padding);
 	}
 }
 
@@ -177,6 +193,7 @@ void dump_objects(tmx_object *o, int depth) {
 			printf("\n%s\t" "valign=", padding); print_valign(t->valign);
 			printf("\n%s\t" "text='%s'", padding, t->text);
 		}
+		dump_template(o->template, depth+1);
 		dump_prop(o->properties, depth+1);
 		printf("\n%s}", padding);
 	}
