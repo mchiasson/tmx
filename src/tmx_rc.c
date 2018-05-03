@@ -76,6 +76,66 @@ int tmx_load_tileset_callback(tmx_resource_manager *rc_mgr, tmx_read_functor cal
 	return 0;
 }
 
+int tmx_load_template(tmx_resource_manager *rc_mgr, const char *path) {
+	tmx_template *tmpl;
+
+	if (rc_mgr == NULL) return 0;
+
+	tmpl = parse_tx_xml(rc_mgr, path);
+	if (tmpl)
+	{
+		hashtable_set((void*)rc_mgr, path, (void*)tmpl, template_deallocator);
+		return 1;
+	}
+
+	return 0;
+}
+
+int tmx_load_template_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len, const char *key) {
+	tmx_template *tmpl;
+
+	if (rc_mgr == NULL) return 0;
+
+	tmpl = parse_tx_xml_buffer(rc_mgr, buffer, len);
+	if (tmpl)
+	{
+		hashtable_set((void*)rc_mgr, key, (void*)tmpl, template_deallocator);
+		return 1;
+	}
+
+	return 0;
+}
+
+int tmx_load_template_fd(tmx_resource_manager *rc_mgr, int fd, const char *key) {
+	tmx_template *tmpl;
+
+	if (rc_mgr == NULL) return 0;
+
+	tmpl = parse_tx_xml_fd(rc_mgr, fd);
+	if (tmpl)
+	{
+		hashtable_set((void*)rc_mgr, key, (void*)tmpl, template_deallocator);
+		return 1;
+	}
+
+	return 0;
+}
+
+int tmx_load_template_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata, const char *key) {
+	tmx_template *tmpl;
+
+	if (rc_mgr == NULL) return 0;
+
+	tmpl = parse_tx_xml_callback(rc_mgr, callback, userdata);
+	if (tmpl)
+	{
+		hashtable_set((void*)rc_mgr, key, (void*)tmpl, template_deallocator);
+		return 1;
+	}
+
+	return 0;
+}
+
 tmx_map* tmx_rcmgr_load(tmx_resource_manager *rc_mgr, const char *path) {
 	tmx_map *map = NULL;
 	set_alloc_functions();

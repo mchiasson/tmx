@@ -39,6 +39,10 @@ TMXEXPORT tmx_resource_manager* tmx_make_resource_manager();
    by the given manager now hold a pointer to freed memory */
 TMXEXPORT void tmx_free_resource_manager(tmx_resource_manager *rc_mgr);
 
+/*
+	Pre-load tilesets using a Resource Manager
+*/
+
 /* Loads a tileset from file at `path` and stores it into given Resource Manager
    `path` will be used as the key
    Returns 1 on success */
@@ -56,6 +60,28 @@ TMXEXPORT int tmx_load_tileset_fd(tmx_resource_manager *rc_mgr, int fd, const ch
 /* Loads a tileset using the given read callback and stores it into given Resource Manager
    Returns 1 on success */
 TMXEXPORT int tmx_load_tileset_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata, const char *key);
+
+/*
+	Pre-load object templates using a Resource Manager
+*/
+
+/* Loads a template from file at `path` and stores it into given Resource Manager
+   `path` will be used as the key
+   Returns 1 on success */
+TMXEXPORT int tmx_load_template(tmx_resource_manager *rc_mgr, const char *path);
+
+/* Loads a template from a buffer and stores it into given Resource Manager
+   Returns 1 on success */
+TMXEXPORT int tmx_load_template_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len, const char *key);
+
+/* Loads a template from a file descriptor and stores it into given Resource Manager
+   The file descriptor will not be closed
+   Returns 1 on success */
+TMXEXPORT int tmx_load_template_fd(tmx_resource_manager *rc_mgr, int fd, const char *key);
+
+/* Loads a template using the given read callback and stores it into given Resource Manager
+   Returns 1 on success */
+TMXEXPORT int tmx_load_template_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata, const char *key);
 
 /*
 	Load map using a Resource Manager

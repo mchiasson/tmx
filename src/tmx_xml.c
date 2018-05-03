@@ -1216,3 +1216,79 @@ tmx_tileset* parse_tsx_xml_callback(tmx_read_functor callback, void *userdata) {
 
 	return res;
 }
+
+/*
+	Public TX load functions
+*/
+
+tmx_template* parse_tx_xml(tmx_resource_manager *rc_mgr, const char *filename) {
+	xmlTextReaderPtr reader;
+	tmx_template *res = NULL;
+
+	setup_libxml_mem();
+
+	if ((reader = xmlReaderForFile(filename, NULL, 0))) {
+		if (check_reader(reader)) {
+			res = parse_root_template(reader, rc_mgr, filename);
+		}
+		xmlFreeTextReader(reader);
+	} else {
+		tmx_err(E_UNKN, "xml parser: unable to open %s", filename);
+	}
+
+	return res;
+}
+
+tmx_template* parse_tx_xml_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len) {
+	xmlTextReaderPtr reader;
+	tmx_template *res = NULL;
+
+	setup_libxml_mem();
+
+	if ((reader = xmlReaderForMemory(buffer, len, NULL, NULL, 0))) {
+		if (check_reader(reader)) {
+			res = parse_root_template(reader, rc_mgr, NULL);
+		}
+		xmlFreeTextReader(reader);
+	} else {
+		tmx_err(E_UNKN, "xml parser: unable to create parser for buffer");
+	}
+
+	return res;
+}
+
+tmx_template* parse_tx_xml_fd(tmx_resource_manager *rc_mgr, int fd) {
+	xmlTextReaderPtr reader;
+	tmx_template *res = NULL;
+
+	setup_libxml_mem();
+
+	if ((reader = xmlReaderForFd(fd, NULL, NULL, 0))) {
+		if (check_reader(reader)) {
+			res = parse_root_template(reader, rc_mgr, NULL);
+		}
+		xmlFreeTextReader(reader);
+	} else {
+		tmx_err(E_UNKN, "xml parser: unable create parser for file descriptor");
+	}
+
+	return res;
+}
+
+tmx_template* parse_tx_xml_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata) {
+	xmlTextReaderPtr reader;
+	tmx_template *res = NULL;
+
+	setup_libxml_mem();
+
+	if ((reader = xmlReaderForIO((xmlInputReadCallback)callback, NULL, userdata, NULL, NULL, 0))) {
+		if (check_reader(reader)) {
+			res = parse_root_template(reader, rc_mgr, NULL);
+		}
+		xmlFreeTextReader(reader);
+	} else {
+		tmx_err(E_UNKN, "xml parser: unable to create parser for input callback");
+	}
+
+	return res;
+}

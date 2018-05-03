@@ -28,6 +28,11 @@ tmx_tileset* parse_tsx_xml_buffer(const char *buffer, int len);
 tmx_tileset* parse_tsx_xml_fd(int fd);
 tmx_tileset* parse_tsx_xml_callback(tmx_read_functor callback, void *userdata);
 
+tmx_template* parse_tx_xml(tmx_resource_manager *rc_mgr, const char *filename);
+tmx_template* parse_tx_xml_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len);
+tmx_template* parse_tx_xml_fd(tmx_resource_manager *rc_mgr, int fd);
+tmx_template* parse_tx_xml_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata);
+
 /*
 	Memory management, node allocation and free - tmx_mem.c
 */
