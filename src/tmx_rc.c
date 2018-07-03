@@ -8,6 +8,23 @@
 #include "tmx_rc.h"
 #include "tmx_utils.h"
 
+/* Private Helper Functions */
+static int add_tileset(tmx_resource_manager *rc_mgr, const char *key, tmx_tileset *value) {
+	if (value) {
+		hashtable_set((void*)rc_mgr, key, (void*)value, tileset_deallocator);
+		return 1;
+	}
+	return 0;
+}
+static int add_template(tmx_resource_manager *rc_mgr, const char *key, tmx_template *value) {
+	if (value)
+	{
+		hashtable_set((void*)rc_mgr, key, (void*)value, template_deallocator);
+		return 1;
+	}
+	return 0;
+}
+
 /*
 	Public functions
 */
@@ -21,119 +38,43 @@ void tmx_free_resource_manager(tmx_resource_manager *h) {
 }
 
 int tmx_load_tileset(tmx_resource_manager *rc_mgr, const char *path) {
-	tmx_tileset *ts;
-
 	if (rc_mgr == NULL) return 0;
-
-	ts = parse_tsx_xml(path);
-	if (ts) {
-		hashtable_set((void*)rc_mgr, path, (void*)ts, tileset_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_tileset(rc_mgr, path, parse_tsx_xml(path));
 }
 
 int tmx_load_tileset_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len, const char *key) {
-	tmx_tileset *ts;
-
 	if (rc_mgr == NULL) return 0;
-
-	ts = parse_tsx_xml_buffer(buffer, len);
-	if (ts) {
-		hashtable_set((void*)rc_mgr, key, (void*)ts, tileset_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_tileset(rc_mgr, key, parse_tsx_xml_buffer(buffer, len));
 }
 
 int tmx_load_tileset_fd(tmx_resource_manager *rc_mgr, int fd, const char *key) {
-	tmx_tileset *ts;
-
 	if (rc_mgr == NULL) return 0;
-
-	ts = parse_tsx_xml_fd(fd);
-	if (ts) {
-		hashtable_set((void*)rc_mgr, key, (void*)ts, tileset_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_tileset(rc_mgr, key, parse_tsx_xml_fd(fd));
 }
 
 int tmx_load_tileset_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata, const char *key) {
-	tmx_tileset *ts;
-
 	if (rc_mgr == NULL) return 0;
-
-	ts = parse_tsx_xml_callback(callback, userdata);
-	if (ts) {
-		hashtable_set((void*)rc_mgr, key, (void*)ts, tileset_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_tileset(rc_mgr, key, parse_tsx_xml_callback(callback, userdata));
 }
 
 int tmx_load_template(tmx_resource_manager *rc_mgr, const char *path) {
-	tmx_template *tmpl;
-
 	if (rc_mgr == NULL) return 0;
-
-	tmpl = parse_tx_xml(rc_mgr, path);
-	if (tmpl)
-	{
-		hashtable_set((void*)rc_mgr, path, (void*)tmpl, template_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_template(rc_mgr, path, parse_tx_xml(rc_mgr, path));
 }
 
 int tmx_load_template_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int len, const char *key) {
-	tmx_template *tmpl;
-
 	if (rc_mgr == NULL) return 0;
-
-	tmpl = parse_tx_xml_buffer(rc_mgr, buffer, len);
-	if (tmpl)
-	{
-		hashtable_set((void*)rc_mgr, key, (void*)tmpl, template_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_template(rc_mgr, key, parse_tx_xml_buffer(rc_mgr, buffer, len));
 }
 
 int tmx_load_template_fd(tmx_resource_manager *rc_mgr, int fd, const char *key) {
-	tmx_template *tmpl;
-
 	if (rc_mgr == NULL) return 0;
-
-	tmpl = parse_tx_xml_fd(rc_mgr, fd);
-	if (tmpl)
-	{
-		hashtable_set((void*)rc_mgr, key, (void*)tmpl, template_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_template(rc_mgr, key, parse_tx_xml_fd(rc_mgr, fd));
 }
 
 int tmx_load_template_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callback, void *userdata, const char *key) {
-	tmx_template *tmpl;
-
 	if (rc_mgr == NULL) return 0;
-
-	tmpl = parse_tx_xml_callback(rc_mgr, callback, userdata);
-	if (tmpl)
-	{
-		hashtable_set((void*)rc_mgr, key, (void*)tmpl, template_deallocator);
-		return 1;
-	}
-
-	return 0;
+	return add_template(rc_mgr, key, parse_tx_xml_callback(rc_mgr, callback, userdata));
 }
 
 tmx_map* tmx_rcmgr_load(tmx_resource_manager *rc_mgr, const char *path) {
