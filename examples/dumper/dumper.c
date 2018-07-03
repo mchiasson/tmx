@@ -369,7 +369,7 @@ int isMap(const char *arg) {
 }
 
 void printUsage(const char *arg0) {
-	fprintf(stderr, "usage: %s [--use-tileset-mgr] { [--fd|--buffer|--callback] <map.tmx|tileset.tsx> }...\n", arg0);
+	fprintf(stderr, "usage: %s [--use-rc-mgr] { [--fd|--buffer|--callback] <map.tmx|tileset.tsx> }...\n", arg0);
 }
 
 int main(int argc, char *argv[]) {
@@ -388,14 +388,14 @@ int main(int argc, char *argv[]) {
 	tmx_alloc_func = dbg_alloc; /* alloc/free dbg */
 	tmx_free_func  = dbg_free;
 
-	/* Parses each argument, loads each file (map or tileset) using the specified method (none, fd, buffer, callbacl) */
+	/* Parses each argument, loads each file (map or tileset) using the specified method (none, fd, buffer, callback) */
 	for (it = 1; it < argc; it++) {
 		if (isOption(argv[it])) {
 			if (it == 1 && !strcmp("--help", argv[it])) {
 				printUsage(argv[0]);
 				return EXIT_SUCCESS;
 			}
-			else if (it == 1 && !strcmp("--use-tileset-mgr", argv[it])) {
+			else if (it == 1 && !strcmp("--use-rc-mgr", argv[it])) {
 				rc_mgr = tmx_make_resource_manager();
 				if (!rc_mgr) {
 					tmx_perror("error");
@@ -464,7 +464,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			else {
-				if (it == 1) fprintf(stderr, "unknown option: %s\nvalid options are --use-tileset-mgr\n", argv[1]);
+				if (it == 1) fprintf(stderr, "unknown option: %s\nvalid options are --use-rc-mgr\n", argv[1]);
 				fprintf(stderr, "unknown load method: %s\nvalid methods are --fd, --buffer, --callback\n", argv[it]);
 			}
 		}
