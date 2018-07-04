@@ -125,7 +125,6 @@ struct _tmx_tile { /* <tile> */
 };
 
 struct _tmx_ts { /* <tileset> and <tileoffset> */
-	int is_embedded; /* used internally to free this node */
 	char *name;
 
 	unsigned int tile_width, tile_height;
@@ -141,6 +140,7 @@ struct _tmx_ts { /* <tileset> and <tileoffset> */
 };
 
 struct _tmx_ts_list { /* Linked list */
+	int is_embedded; /* used internally to free this node */
 	unsigned int firstgid;
 	tmx_tileset *tileset;
 	tmx_tileset_list *next;

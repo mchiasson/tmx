@@ -145,6 +145,7 @@ void dump_points(double **p, int pl) {
 }
 
 void dump_objects(tmx_object *o, int depth);
+void dump_tileset(tmx_tileset_list *tsl, int depth);
 
 void dump_template(tmx_template *t, int depth) {
 	char padding[11]; mk_padding(padding, depth);
@@ -153,6 +154,9 @@ void dump_template(tmx_template *t, int depth) {
 	if (!t) {
 		printf(" (NULL) }");
 	} else {
+		if (t->tileset_ref) {
+			dump_tileset(t->tileset_ref, depth+1);
+		}
 		dump_objects(t->object, depth+1);
 		printf("\n%s}", padding);
 	}
@@ -219,53 +223,55 @@ void dump_image(tmx_image *i, int depth) {
 	}
 }
 
-void dump_tile(tmx_tile *t, unsigned int tilecount) {
+void dump_tile(tmx_tile *t, unsigned int tilecount, int depth) {
 	unsigned int i, j;
+	char padding[11]; mk_padding(padding, depth);
 	for (i=0; i<tilecount; i++) {
-		printf("\n\t" "tile={");
-		printf("\n\t\t" "id=%u", t[i].id);
-		printf("\n\t\t" "upper-left=(%u,%u)", t[i].ul_x, t[i].ul_y);
-		printf("\n\t\t" "type='%s'", t[i].type);
-		dump_image(t[i].image, 2);
-		dump_prop(t[i].properties, 2);
-		dump_objects(t[i].collision, 2);
+		printf("\n%s" "tile={", padding);
+		printf("\n%s\t" "id=%u", padding, t[i].id);
+		printf("\n%s\t" "upper-left=(%u,%u)", padding, t[i].ul_x, t[i].ul_y);
+		printf("\n%s\t" "type='%s'", padding, t[i].type);
+		dump_image(t[i].image, depth+1);
+		dump_prop(t[i].properties, depth+1);
+		dump_objects(t[i].collision, depth+1);
 
 		if (t[i].animation) {
-			printf("\n\t\t" "animation={");
+			printf("\n%s\t" "animation={", padding);
 			for (j=0; j<t[i].animation_len; j++) {
-				printf("\n\t\t\t" "tile=%3u (%6ums)", t[i].animation[j].tile_id, t[i].animation[j].duration);
+				printf("\n%s\t\t" "tile=%3u (%6ums)", padding, t[i].animation[j].tile_id, t[i].animation[j].duration);
 			}
-			printf("\n\t\t}");
+			printf("\n%s\t}", padding);
 		}
 
-		printf("\n\t}");
+		printf("\n%s}", padding);
 	}
 }
 
-void dump_tileset(tmx_tileset_list *tsl) {
+void dump_tileset(tmx_tileset_list *tsl, int depth) {
+	char padding[11]; mk_padding(padding, depth);
 	if (tsl) {
 		tmx_tileset *t = tsl->tileset;
-		printf("\ntileset={");
+		printf("\n%stileset={", padding);
 		if (t) {
-			printf("\n\t" "firstgid=%u", tsl->firstgid);
-			printf("\n\t" "name=%s", t->name);
-			printf("\n\t" "tilecount=%u", t->tilecount);
-			printf("\n\t" "tile_height=%u", t->tile_height);
-			printf("\n\t" "tile_width=%u", t->tile_width);
-			printf("\n\t" "margin=%u", t->margin);
-			printf("\n\t" "spacing=%u", t->spacing);
-			printf("\n\t" "x_offset=%d", t->x_offset);
-			printf("\n\t" "y_offset=%d", t->y_offset);
-			dump_image(t->image, 1);
-			dump_tile(t->tiles, t->tilecount);
-			dump_prop(t->properties, 1);
-			printf("\n}");
+			printf("\n%s\t" "firstgid=%u", padding, tsl->firstgid);
+			printf("\n%s\t" "name=%s", padding, t->name);
+			printf("\n%s\t" "tilecount=%u", padding, t->tilecount);
+			printf("\n%s\t" "tile_height=%u", padding, t->tile_height);
+			printf("\n%s\t" "tile_width=%u", padding, t->tile_width);
+			printf("\n%s\t" "margin=%u", padding, t->margin);
+			printf("\n%s\t" "spacing=%u", padding, t->spacing);
+			printf("\n%s\t" "x_offset=%d", padding, t->x_offset);
+			printf("\n%s\t" "y_offset=%d", padding, t->y_offset);
+			dump_image(t->image, depth+1);
+			dump_tile(t->tiles, t->tilecount, depth+1);
+			dump_prop(t->properties, depth+1);
+			printf("\n%s}", padding);
 		} else {
 			printf(" (NULL) }");
 		}
 
 		if (tsl->next) {
-			dump_tileset(tsl->next);
+			dump_tileset(tsl->next, depth);
 		}
 	}
 }
@@ -329,7 +335,7 @@ void dump_map(tmx_map *m) {
 	printf("\n}");
 
 	if (m) {
-		dump_tileset(m->ts_head);
+		dump_tileset(m->ts_head, 0);
 		dump_layer(m->ly_head, m->height * m->width, 0);
 		dump_prop(m->properties, 0);
 		tmx_map_free(m);

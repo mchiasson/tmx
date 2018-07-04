@@ -852,6 +852,7 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 				res = rc_holder->resource.tileset;
 				if (res) {
 					res_list->tileset = res;
+					tmx_free_func(value);
 					return 1;
 				}
 			}
@@ -865,7 +866,7 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 			add_tileset(rc_mgr, value, res);
 		}
 		else {
-			res->is_embedded = 1;
+			res_list->is_embedded = 1;
 		}
 		if (!(ab_path = mk_absolute_path(filename, value))) return 0;
 		tmx_free_func(value);
@@ -882,7 +883,7 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 
 	/* Embedded tileset */
 	if (!(res = alloc_tileset())) return 0;
-	res->is_embedded = 1;
+	res_list->is_embedded = 1;
 	res_list->tileset = res;
 
 	return parse_tileset(reader, res, rc_mgr, filename);

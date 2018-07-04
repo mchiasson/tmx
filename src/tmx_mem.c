@@ -228,7 +228,7 @@ void free_ts(tmx_tileset *ts) {
 void free_ts_list(tmx_tileset_list *tsl) {
 	if (tsl) {
 		free_ts_list(tsl->next);
-		if (tsl->tileset->is_embedded) {
+		if (tsl->is_embedded) {
 			free_ts(tsl->tileset);
 		}
 		tmx_free_func(tsl);
@@ -253,7 +253,7 @@ void resource_deallocator(void *val, const char *key UNUSED) {
 		rc_holder = (resource_holder*)val;
 		if (rc_holder->type == RC_TSX)
 			free_ts(rc_holder->resource.tileset);
-		if (rc_holder->type == RC_TX)
+		else if (rc_holder->type == RC_TX)
 			free_template(rc_holder->resource.template);
 		tmx_free_func(val);
 	}
