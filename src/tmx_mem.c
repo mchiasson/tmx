@@ -98,6 +98,24 @@ tmx_map* alloc_map(void) {
 	return (tmx_map*)node_alloc(sizeof(tmx_map));
 }
 
+resource_holder* pack_tileset_resource(tmx_tileset *value) {
+	resource_holder *res = node_alloc(sizeof(resource_holder));
+	if (res) {
+		res->type = RC_TSX;
+		res->resource.tileset = value;
+	}
+	return res;
+}
+
+resource_holder* pack_template_resource(tmx_template *value) {
+	resource_holder *res = node_alloc(sizeof(resource_holder));
+	if (res) {
+		res->type = RC_TX;
+		res->resource.template = value;
+	}
+	return res;
+}
+
 /*
 	Node free
 */
@@ -223,4 +241,20 @@ void free_template(tmx_template *tmpl) {
 		free_obj(tmpl->object);
 	}
 	tmx_free_func(tmpl);
+}
+
+void property_deallocator(void *val, const char *key UNUSED) {
+	free_property((tmx_property*)val);
+}
+
+void resource_deallocator(void *val, const char *key UNUSED) {
+	resource_holder *rc_holder;
+	if (val) {
+		rc_holder = (resource_holder*)val;
+		if (rc_holder->type == RC_TSX)
+			free_ts(rc_holder->resource.tileset);
+		if (rc_holder->type == RC_TX)
+			free_template(rc_holder->resource.template);
+		tmx_free_func(val);
+	}
 }

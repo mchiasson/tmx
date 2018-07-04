@@ -8,19 +8,30 @@
 #include "tmx_rc.h"
 #include "tmx_utils.h"
 
-/* Private Helper Functions */
-static int add_tileset(tmx_resource_manager *rc_mgr, const char *key, tmx_tileset *value) {
+/*
+	Private Helper Functions
+*/
+
+int add_tileset(tmx_resource_manager *rc_mgr, const char *key, tmx_tileset *value) {
+	resource_holder *rc_holder;
 	if (value) {
-		hashtable_set((void*)rc_mgr, key, (void*)value, tileset_deallocator);
-		return 1;
+		rc_holder = pack_tileset_resource(value);
+		if (rc_holder) {
+			hashtable_set((void*)rc_mgr, key, (void*)rc_holder, resource_deallocator);
+			return 1;
+		}
 	}
 	return 0;
 }
-static int add_template(tmx_resource_manager *rc_mgr, const char *key, tmx_template *value) {
+int add_template(tmx_resource_manager *rc_mgr, const char *key, tmx_template *value) {
+	resource_holder *rc_holder;
 	if (value)
 	{
-		hashtable_set((void*)rc_mgr, key, (void*)value, template_deallocator);
-		return 1;
+		rc_holder = pack_template_resource(value);
+		if (rc_holder) {
+			hashtable_set((void*)rc_mgr, key, (void*)rc_holder, resource_deallocator);
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -34,7 +45,7 @@ tmx_resource_manager* tmx_make_resource_manager() {
 }
 
 void tmx_free_resource_manager(tmx_resource_manager *h) {
-	free_hashtable((void*)h, tileset_deallocator);
+	free_hashtable((void*)h, resource_deallocator);
 }
 
 int tmx_load_tileset(tmx_resource_manager *rc_mgr, const char *path) {

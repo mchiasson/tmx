@@ -237,6 +237,7 @@ static int parse_object(xmlTextReaderPtr reader, tmx_object *obj, int is_on_map,
 	int curr_depth;
 	const char *name;
 	char *value, *ab_path;
+	resource_holder *tmpl;
 	xmlTextReaderPtr sub_reader;
 
 	/* parses each attribute */
@@ -266,9 +267,9 @@ static int parse_object(xmlTextReaderPtr reader, tmx_object *obj, int is_on_map,
 
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"template"))) { /* template */
 		if (rc_mgr) {
-			tmx_template *tmpl = (tmx_template*) hashtable_get((void*)rc_mgr, value);
-			if (tmpl) {
-				obj->template = tmpl;
+			tmpl = (resource_holder*) hashtable_get((void*)rc_mgr, value);
+			if (tmpl && tmpl->type == RC_TX) {
+				obj->template = tmpl->resource.template;
 			}
 		}
 		if (!(obj->template)) {
@@ -287,7 +288,7 @@ static int parse_object(xmlTextReaderPtr reader, tmx_object *obj, int is_on_map,
 				return 0;
 			}
 			if (rc_mgr) {
-				hashtable_set((void*)rc_mgr, value, obj->template, template_deallocator);
+				add_template(rc_mgr, value, obj->template);
 			} else {
 				obj->template->is_embedded = 1;
 			}
@@ -825,6 +826,7 @@ static int parse_tileset(xmlTextReaderPtr reader, tmx_tileset *ts_addr, tmx_reso
 static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_headadr, tmx_resource_manager *rc_mgr, const char *filename) {
 	tmx_tileset_list *res_list = NULL;
 	tmx_tileset *res = NULL;
+	resource_holder *rc_holder;
 	int ret;
 	char *value, *ab_path;
 	xmlTextReaderPtr sub_reader;
@@ -845,10 +847,13 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 	/* External Tileset */
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"source"))) { /* source */
 		if (rc_mgr) {
-			res = (tmx_tileset*) hashtable_get((void*)rc_mgr, value);
-			if (res) {
-				res_list->tileset = res;
-				return 1;
+			rc_holder = (resource_holder*) hashtable_get((void*)rc_mgr, value);
+			if (rc_holder && rc_holder->type == RC_TSX) {
+				res = rc_holder->resource.tileset;
+				if (res) {
+					res_list->tileset = res;
+					return 1;
+				}
 			}
 		}
 		if (!(res = alloc_tileset())) {
@@ -857,7 +862,7 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 		}
 		res_list->tileset = res;
 		if (rc_mgr) {
-			hashtable_set((void*)rc_mgr, value, (void*)res, tileset_deallocator);
+			add_tileset(rc_mgr, value, res);
 		}
 		else {
 			res->is_embedded = 1;
@@ -1032,22 +1037,21 @@ static tmx_map* parse_map_document(xmlTextReaderPtr reader, tmx_resource_manager
 		/* DTD before root element */
 		if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_DOCUMENT_TYPE)
 		{
-			if (xmlTextReaderRead(reader) != 1) return NULL;
+			if (xmlTextReaderRead(reader) != 1) goto cleanup;
 		}
 
 		name = (char*) xmlTextReaderConstName(reader);
 		if (strcmp(name, "map")) {
 			tmx_err(E_XDATA, "xml parser: root of map document is not a 'map' element");
-			return NULL;
 		}
-		if (!(res = alloc_map())) {
-			return NULL;
-		}
-		if (!parse_map(reader, res, rc_mgr, filename)) {
-			tmx_map_free(res);
-			res = NULL;
+		else if ((res = alloc_map())) {
+			if (!parse_map(reader, res, rc_mgr, filename)) {
+				tmx_map_free(res);
+				res = NULL;
+			}
 		}
 	}
+cleanup:
 	xmlFreeTextReader(reader);
 	return res;
 }
@@ -1062,12 +1066,11 @@ static tmx_tileset* parse_tileset_document(xmlTextReaderPtr reader, const char *
 			tmx_err(E_XDATA, "xml parser: root of tileset document is not a 'tileset' element");
 			return NULL;
 		}
-		if (!(res = alloc_tileset())) {
-			return NULL;
-		}
-		if (!parse_tileset(reader, res, NULL, filename)) {
-			free_ts(res);
-			res = NULL;
+		else if ((res = alloc_tileset())) {
+			if (!parse_tileset(reader, res, NULL, filename)) {
+				free_ts(res);
+				res = NULL;
+			}
 		}
 	}
 	xmlFreeTextReader(reader);
@@ -1084,12 +1087,11 @@ static tmx_template* parse_template_document(xmlTextReaderPtr reader, tmx_resour
 			tmx_err(E_XDATA, "xml parser: root of template document is not a 'template' element");
 			return NULL;
 		}
-		if (!(res = alloc_template())) {
-			return NULL;
-		}
-		if (!parse_template(reader, res, rc_mgr, filename)) {
-			free_template(res);
-			res = NULL;
+		else if ((res = alloc_template())) {
+			if (!parse_template(reader, res, rc_mgr, filename)) {
+				free_template(res);
+				res = NULL;
+			}
 		}
 	}
 	xmlFreeTextReader(reader);

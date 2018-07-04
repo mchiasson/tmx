@@ -16,6 +16,20 @@
 #endif
 
 /*
+	Resource holder type an deallocator - tmx_rc.c
+*/
+enum resource_type { RC_TSX, RC_TX };
+typedef struct _rc_holder {
+	enum resource_type type;
+	union {
+		tmx_tileset  *tileset;
+		tmx_template *template;
+	} resource;
+} resource_holder;
+int add_tileset(tmx_resource_manager *rc_mgr, const char *key, tmx_tileset *value);
+int add_template(tmx_resource_manager *rc_mgr, const char *key, tmx_template *value);
+
+/*
 	XML Parser implementation - tmx_xml.c
 */
 tmx_map* parse_xml(tmx_resource_manager *rc_mgr, const char *filename);
@@ -53,6 +67,9 @@ tmx_template*     alloc_template(void);
 tmx_map*          alloc_map(void);
 tmx_tile*         alloc_tile(void);
 
+resource_holder* pack_tileset_resource(tmx_tileset *value);
+resource_holder* pack_template_resource(tmx_template *value);
+
 void free_property(tmx_property *p);
 void free_props(tmx_properties *h);
 void free_obj(tmx_object *o);
@@ -63,6 +80,9 @@ void free_tiles(tmx_tile *t, int tilecount);
 void free_ts(tmx_tileset *ts);
 void free_ts_list(tmx_tileset_list *tsl);
 void free_template(tmx_template *tmpl);
+
+void resource_deallocator(void *val, const char *key);
+void property_deallocator(void *val, const char *key);
 
 /*
 	Misc - tmx_utils.c
@@ -108,10 +128,6 @@ void* hashtable_get(void *hashtable, const char *key);
 void  hashtable_rm(void *hashtable, const char *key, hashtable_entry_deallocator deallocator);
 void  hashtable_foreach(void *hashtable, hashtable_foreach_functor functor, void *userdata);
 void  free_hashtable(void *hashtable, hashtable_entry_deallocator deallocator);
-
-void property_deallocator(void *val, const char *key);
-void tileset_deallocator(void *val, const char *key);
-void template_deallocator(void *val, const char *key);
 
 /*
 	Error handling - tmx_err.c

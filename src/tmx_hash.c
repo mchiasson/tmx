@@ -34,15 +34,3 @@ void free_hashtable(void *hashtable, hashtable_entry_deallocator deallocator) {
 void hashtable_foreach(void *hashtable, hashtable_foreach_functor functor, void *userdata) {
 	xmlHashScan((xmlHashTablePtr)hashtable, (xmlHashScanner)functor, userdata);
 }
-
-void property_deallocator(void *val, const char *key UNUSED) {
-	free_property((tmx_property*)val);
-}
-
-void tileset_deallocator(void *val, const char *key UNUSED) {
-	free_ts((tmx_tileset*)val);
-}
-
-void template_deallocator(void *val, const char *key UNUSED) {
-	free_template((tmx_template*)val);
-}
