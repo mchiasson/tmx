@@ -231,7 +231,7 @@ static int parse_text(xmlTextReaderPtr reader, tmx_text *text) {
 	return 1;
 }
 
-static tmx_template* parse_root_template(xmlTextReaderPtr reader, tmx_resource_manager *rc_mgr, const char *filename);
+static tmx_template* parse_template_document(xmlTextReaderPtr reader, tmx_resource_manager *rc_mgr, const char *filename);
 
 static int parse_object(xmlTextReaderPtr reader, tmx_object *obj, int is_on_map, tmx_resource_manager *rc_mgr, const char *filename) {
 	int curr_depth;
@@ -273,14 +273,13 @@ static int parse_object(xmlTextReaderPtr reader, tmx_object *obj, int is_on_map,
 		}
 		if (!(obj->template)) {
 			if (!(ab_path = mk_absolute_path(filename, value))) return 0;
-			if (!(sub_reader = xmlReaderForFile(ab_path, NULL, 0)) || !check_reader(sub_reader)) { /* opens */
+			if (!(sub_reader = xmlReaderForFile(ab_path, NULL, 0))) { /* opens */
 				tmx_err(E_XDATA, "xml parser: cannot open object template file '%s'", ab_path);
 				tmx_free_func(ab_path);
 				tmx_free_func(value);
 				return 0;
 			}
-			obj->template = parse_root_template(sub_reader, rc_mgr, ab_path); /* and parses the template file */
-			xmlFreeTextReader(sub_reader);
+			obj->template = parse_template_document(sub_reader, rc_mgr, ab_path); /* and parses the template file */
 			tmx_free_func(ab_path);
 			if (!(obj->template))
 			{
@@ -884,26 +883,39 @@ static int parse_tileset_list(xmlTextReaderPtr reader, tmx_tileset_list **ts_hea
 	return parse_tileset(reader, res, rc_mgr, filename);
 }
 
-static tmx_map *parse_root_map(xmlTextReaderPtr reader, tmx_resource_manager *rc_mgr, const char *filename) {
-	tmx_map *res = NULL;
+static int parse_template(xmlTextReaderPtr reader, tmx_template *template, tmx_resource_manager *rc_mgr, const char *filename) {
+	char *name;
+	int curr_depth;
+
+	curr_depth = xmlTextReaderDepth(reader);
+
+	/* Parse each child */
+	do {
+		if (xmlTextReaderRead(reader) != 1) return 0; /* error_handler has been called */
+
+		if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) {
+			name = (char*)xmlTextReaderConstName(reader);
+			if (!strcmp(name, "tileset")) {
+				parse_tileset_list(reader, &(template->tileset_ref), rc_mgr, filename);
+			} else if (!strcmp(name, "object")) {
+				if (!parse_object(reader, template->object, 0, rc_mgr, filename)) return 0;
+			} else {
+				/* Unknow element, skip its tree */
+				if (xmlTextReaderNext(reader) != 1) return 0;
+			}
+		}
+	} while (xmlTextReaderNodeType(reader) != XML_READER_TYPE_END_ELEMENT ||
+	         xmlTextReaderDepth(reader) != curr_depth);
+	return 1;
+}
+
+static int parse_map(xmlTextReaderPtr reader, tmx_map *map, tmx_resource_manager *rc_mgr, const char *filename) {
 	int curr_depth, flag;
 	const char *name;
 	char *value;
 	enum tmx_layer_type type;
 
-	/* DTD before root element */
-	if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_DOCUMENT_TYPE)
-	{
-		if (xmlTextReaderRead(reader) != 1) return NULL;
-	}
-
-	name = (char*) xmlTextReaderConstName(reader);
 	curr_depth = xmlTextReaderDepth(reader);
-
-	if (strcmp(name, "map")) {
-		tmx_err(E_XDATA, "xml parser: root is not a 'map' element");
-		return NULL;
-	}
 
 	/* infinite maps not supported */
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"infinite"))) {
@@ -911,99 +923,97 @@ static tmx_map *parse_root_map(xmlTextReaderPtr reader, tmx_resource_manager *rc
 		tmx_free_func(value);
 		if (flag == 1) {
 			tmx_err(E_XDATA, "xml parser: chunked layer data is not supported, edit this map to remove the infinite flag");
-			return NULL;
+			return 0;
 		}
 	}
 
-	if (!(res = alloc_map())) return NULL;
-
 	/* parses each attribute */
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"orientation"))) { /* orientation */
-		if (res->orient = parse_orient(value), res->orient == O_NONE) {
+		if (map->orient = parse_orient(value), map->orient == O_NONE) {
 			tmx_err(E_XDATA, "xml parser: unsupported 'orientation' '%s'", value);
-			goto cleanup;
+			return 0;
 		}
 		tmx_free_func(value);
 	} else {
 		tmx_err(E_MISSEL, "xml parser: missing 'orientation' attribute in the 'map' element");
-		goto cleanup;
+		return 0;
 	}
 
 	value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"staggerindex"); /* staggerindex */
-	if (value != NULL && (res->stagger_index = parse_stagger_index(value), res->stagger_index == SI_NONE)) {
+	if (value != NULL && (map->stagger_index = parse_stagger_index(value), map->stagger_index == SI_NONE)) {
 		tmx_err(E_XDATA, "xml parser: unsupported 'staggerindex' '%s'", value);
-		goto cleanup;
+		return 0;
 	}
 	tmx_free_func(value);
 
 	value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"staggeraxis"); /* staggeraxis */
-	if (res->stagger_axis = parse_stagger_axis(value), res->stagger_axis == SA_NONE) {
+	if (map->stagger_axis = parse_stagger_axis(value), map->stagger_axis == SA_NONE) {
 		tmx_err(E_XDATA, "xml parser: unsupported 'staggeraxis' '%s'", value);
-		goto cleanup;
+		return 0;
 	}
 	tmx_free_func(value);
 
 	value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"renderorder"); /* renderorder */
-	if (res->renderorder = parse_renderorder(value), res->renderorder == R_NONE) {
+	if (map->renderorder = parse_renderorder(value), map->renderorder == R_NONE) {
 		tmx_err(E_XDATA, "xml parser: unsupported 'renderorder' '%s'", value);
-		goto cleanup;
+		return 0;
 	}
 	tmx_free_func(value);
 
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"height"))) { /* height */
-		res->height = atoi(value);
+		map->height = atoi(value);
 		tmx_free_func(value);
 	} else {
 		tmx_err(E_MISSEL, "xml parser: missing 'height' attribute in the 'map' element");
-		goto cleanup;
+		return 0;
 	}
 
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"width"))) { /* width */
-		res->width = atoi(value);
+		map->width = atoi(value);
 		tmx_free_func(value);
 	} else {
 		tmx_err(E_MISSEL, "xml parser: missing 'width' attribute in the 'map' element");
-		goto cleanup;
+		return 0;
 	}
 
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"tileheight"))) { /* tileheight */
-		res->tile_height = atoi(value);
+		map->tile_height = atoi(value);
 		tmx_free_func(value);
 	} else {
 		tmx_err(E_MISSEL, "xml parser: missing 'tileheight' attribute in the 'map' element");
-		goto cleanup;
+		return 0;
 	}
 
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"tilewidth"))) { /* tilewidth */
-		res->tile_width = atoi(value);
+		map->tile_width = atoi(value);
 		tmx_free_func(value);
 	} else {
 		tmx_err(E_MISSEL, "xml parser: missing 'tilewidth' attribute in the 'map' element");
-		goto cleanup;
+		return 0;
 	}
 
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"backgroundcolor"))) { /* backgroundcolor */
-		res->backgroundcolor = get_color_rgb(value);
+		map->backgroundcolor = get_color_rgb(value);
 		tmx_free_func(value);
 	}
 
 	if ((value = (char*)xmlTextReaderGetAttribute(reader, (xmlChar*)"hexsidelength"))) { /* hexsidelength */
-		res->hexsidelength = atoi(value);
+		map->hexsidelength = atoi(value);
 		tmx_free_func(value);
 	}
 
 	/* Parse each child */
 	do {
-		if (xmlTextReaderRead(reader) != 1) goto cleanup; /* error_handler has been called */
+		if (xmlTextReaderRead(reader) != 1) return 0; /* error_handler has been called */
 
 		if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) {
 			name = (char*)xmlTextReaderConstName(reader);
 			if (!strcmp(name, "tileset")) {
-				if (!parse_tileset_list(reader, &(res->ts_head), rc_mgr, filename)) goto cleanup;
+				if (!parse_tileset_list(reader, &(map->ts_head), rc_mgr, filename)) return 0;
 			} else if (!strcmp(name, "properties")) {
-				if (!parse_properties(reader, &(res->properties))) goto cleanup;
+				if (!parse_properties(reader, &(map->properties))) return 0;
 			} else if ((type = parse_layer_type(name)) != L_NONE) {
-				if (!parse_layer(reader, &(res->ly_head), res->height, res->width, type, rc_mgr, filename)) goto cleanup;
+				if (!parse_layer(reader, &(map->ly_head), map->height, map->width, type, rc_mgr, filename)) return 0;
 			} else {
 				/* Unknow element, skip its tree */
 				if (xmlTextReaderNext(reader) != 1) return 0;
@@ -1011,58 +1021,79 @@ static tmx_map *parse_root_map(xmlTextReaderPtr reader, tmx_resource_manager *rc
 		}
 	} while (xmlTextReaderNodeType(reader) != XML_READER_TYPE_END_ELEMENT ||
 	         xmlTextReaderDepth(reader) != curr_depth);
-	return res;
-cleanup:
-	tmx_map_free(res);
-	return NULL;
+	return 1;
 }
 
-static tmx_tileset* parse_root_tileset(xmlTextReaderPtr reader, const char *filename) {
-	tmx_tileset *res;
-
-	if (!(res = alloc_tileset())) return NULL;
-
-	parse_tileset(reader, res, NULL, filename);
-
-	return res;
-}
-
-static tmx_template* parse_root_template(xmlTextReaderPtr reader, tmx_resource_manager *rc_mgr, const char *filename) {
-	tmx_template *res;
+static tmx_map* parse_map_document(xmlTextReaderPtr reader, tmx_resource_manager *rc_mgr, const char *filename) {
+	tmx_map *res = NULL;
 	char *name;
-	int curr_depth;
 
-	name = (char*) xmlTextReaderConstName(reader);
-	curr_depth = xmlTextReaderDepth(reader);
-
-	if (strcmp(name, "template")) {
-		tmx_err(E_XDATA, "xml parser: root of template file is not a 'template' element");
-		return NULL;
-	}
-
-	if (!(res = alloc_template())) return NULL;
-
-	/* Parse each child */
-	do {
-		if (xmlTextReaderRead(reader) != 1) goto cleanup; /* error_handler has been called */
-
-		if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) {
-			name = (char*)xmlTextReaderConstName(reader);
-			if (!strcmp(name, "tileset")) {
-				parse_tileset_list(reader, &(res->tileset_ref), rc_mgr, filename);
-			} else if (!strcmp(name, "object")) {
-				if (!parse_object(reader, res->object, 0, rc_mgr, filename)) goto cleanup;
-			} else {
-				/* Unknow element, skip its tree */
-				if (xmlTextReaderNext(reader) != 1) return 0;
-			}
+	if (check_reader(reader)) {
+		/* DTD before root element */
+		if (xmlTextReaderNodeType(reader) == XML_READER_TYPE_DOCUMENT_TYPE)
+		{
+			if (xmlTextReaderRead(reader) != 1) return NULL;
 		}
-	} while (xmlTextReaderNodeType(reader) != XML_READER_TYPE_END_ELEMENT ||
-	         xmlTextReaderDepth(reader) != curr_depth);
+
+		name = (char*) xmlTextReaderConstName(reader);
+		if (strcmp(name, "map")) {
+			tmx_err(E_XDATA, "xml parser: root of map document is not a 'map' element");
+			return NULL;
+		}
+		if (!(res = alloc_map())) {
+			return NULL;
+		}
+		if (!parse_map(reader, res, rc_mgr, filename)) {
+			tmx_map_free(res);
+			res = NULL;
+		}
+	}
+	xmlFreeTextReader(reader);
 	return res;
-cleanup:
-	free_template(res);
-	return NULL;
+}
+
+static tmx_tileset* parse_tileset_document(xmlTextReaderPtr reader, const char *filename) {
+	tmx_tileset *res = NULL;
+	char *name;
+
+	if (check_reader(reader)) {
+		name = (char*) xmlTextReaderConstName(reader);
+		if (strcmp(name, "tileset")) {
+			tmx_err(E_XDATA, "xml parser: root of tileset document is not a 'tileset' element");
+			return NULL;
+		}
+		if (!(res = alloc_tileset())) {
+			return NULL;
+		}
+		if (!parse_tileset(reader, res, NULL, filename)) {
+			free_ts(res);
+			res = NULL;
+		}
+	}
+	xmlFreeTextReader(reader);
+	return res;
+}
+
+static tmx_template* parse_template_document(xmlTextReaderPtr reader, tmx_resource_manager *rc_mgr, const char *filename) {
+	tmx_template *res = NULL;
+	char *name;
+
+	if (check_reader(reader)) {
+		name = (char*) xmlTextReaderConstName(reader);
+		if (strcmp(name, "template")) {
+			tmx_err(E_XDATA, "xml parser: root of template document is not a 'template' element");
+			return NULL;
+		}
+		if (!(res = alloc_template())) {
+			return NULL;
+		}
+		if (!parse_template(reader, res, rc_mgr, filename)) {
+			free_template(res);
+			res = NULL;
+		}
+	}
+	xmlFreeTextReader(reader);
+	return res;
 }
 
 /*
@@ -1076,10 +1107,7 @@ tmx_map *parse_xml(tmx_resource_manager *rc_mgr, const char *filename) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForFile(filename, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_map(reader, rc_mgr, filename);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_map_document(reader, rc_mgr, filename);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to open %s", filename);
 	}
@@ -1094,10 +1122,7 @@ tmx_map* parse_xml_buffer(tmx_resource_manager *rc_mgr, const char *buffer, int 
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForMemory(buffer, len, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_map(reader, rc_mgr, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_map_document(reader, rc_mgr, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to create parser for buffer");
 	}
@@ -1112,10 +1137,7 @@ tmx_map* parse_xml_fd(tmx_resource_manager *rc_mgr, int fd) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForFd(fd, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_map(reader, rc_mgr, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_map_document(reader, rc_mgr, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable create parser for file descriptor");
 	}
@@ -1130,10 +1152,7 @@ tmx_map* parse_xml_callback(tmx_resource_manager *rc_mgr, tmx_read_functor callb
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForIO((xmlInputReadCallback)callback, NULL, userdata, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_map(reader, rc_mgr, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_map_document(reader, rc_mgr, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to create parser for input callback");
 	}
@@ -1152,10 +1171,7 @@ tmx_tileset* parse_tsx_xml(const char *filename) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForFile(filename, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_tileset(reader, filename);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_tileset_document(reader, filename);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to open %s", filename);
 	}
@@ -1170,10 +1186,7 @@ tmx_tileset* parse_tsx_xml_buffer(const char *buffer, int len) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForMemory(buffer, len, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_tileset(reader, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_tileset_document(reader, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to create parser for buffer");
 	}
@@ -1188,10 +1201,7 @@ tmx_tileset* parse_tsx_xml_fd(int fd) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForFd(fd, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_tileset(reader, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_tileset_document(reader, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable create parser for file descriptor");
 	}
@@ -1206,10 +1216,7 @@ tmx_tileset* parse_tsx_xml_callback(tmx_read_functor callback, void *userdata) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForIO((xmlInputReadCallback)callback, NULL, userdata, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_tileset(reader, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_tileset_document(reader, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to create parser for input callback");
 	}
@@ -1228,10 +1235,7 @@ tmx_template* parse_tx_xml(tmx_resource_manager *rc_mgr, const char *filename) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForFile(filename, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_template(reader, rc_mgr, filename);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_template_document(reader, rc_mgr, filename);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to open %s", filename);
 	}
@@ -1246,10 +1250,7 @@ tmx_template* parse_tx_xml_buffer(tmx_resource_manager *rc_mgr, const char *buff
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForMemory(buffer, len, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_template(reader, rc_mgr, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_template_document(reader, rc_mgr, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to create parser for buffer");
 	}
@@ -1264,10 +1265,7 @@ tmx_template* parse_tx_xml_fd(tmx_resource_manager *rc_mgr, int fd) {
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForFd(fd, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_template(reader, rc_mgr, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_template_document(reader, rc_mgr, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable create parser for file descriptor");
 	}
@@ -1282,10 +1280,7 @@ tmx_template* parse_tx_xml_callback(tmx_resource_manager *rc_mgr, tmx_read_funct
 	setup_libxml_mem();
 
 	if ((reader = xmlReaderForIO((xmlInputReadCallback)callback, NULL, userdata, NULL, NULL, 0))) {
-		if (check_reader(reader)) {
-			res = parse_root_template(reader, rc_mgr, NULL);
-		}
-		xmlFreeTextReader(reader);
+		res = parse_template_document(reader, rc_mgr, NULL);
 	} else {
 		tmx_err(E_UNKN, "xml parser: unable to create parser for input callback");
 	}
