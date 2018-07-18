@@ -11,7 +11,6 @@
 #include <libxml/xmlreader.h>
 
 #include "tmx.h"
-#include "tmx_rc.h"
 #include "tmx_utils.h"
 
 /*

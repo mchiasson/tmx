@@ -5,7 +5,6 @@
 #include <unistd.h>
 
 #include <tmx.h>
-#include <tmx_rc.h>
 
 #define str_bool(b) (b==0? "false": "true")
 

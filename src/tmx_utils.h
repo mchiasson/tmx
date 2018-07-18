@@ -3,7 +3,6 @@
 #pragma once
 
 #include "tmx.h"
-#include "tmx_rc.h"
 
 #ifndef TMXUTILS_H
 #define TMXUTILS_H
