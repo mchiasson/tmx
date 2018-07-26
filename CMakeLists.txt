@@ -1,4 +1,13 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.2)
+
+##
+# Hunter Cross-platform package manager
+##
+include("cmake/HunterGate.cmake")
+HunterGate(
+    URL "https://github.com/ruslo/hunter/archive/v0.22.19.tar.gz"
+    SHA1 "54749ffc945f78362aa680a7abbafcaa40ff9069"
+)
 
 #-----------#
 # Configure
@@ -8,7 +17,6 @@ project(tmx VERSION 1.0.0 LANGUAGES C)
 set(API_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 set(BUILD_VERSION "${PROJECT_VERSION}")
 
-option(WANT_ZLIB "use zlib (ability to decompress layers data) ?" on)
 option(BUILD_SHARED_LIBS "Build shared libraries (dll / so)" off)
 
 #-----------#
@@ -37,30 +45,17 @@ if(SYS_BE)
     add_definitions(-DSYS_BIG_ENDIAN)
 endif(SYS_BE)
 
-if(WANT_ZLIB)
-    add_definitions(-DWANT_ZLIB)
-    include(FindZLIB)
-    find_package(ZLIB REQUIRED)
-    include_directories(${ZLIB_INCLUDE_DIR})
-    list(APPEND libs ${ZLIB_LIBRARIES})
-else(WANT_ZLIB)
-    message("Zlib not wanted")
-endif(WANT_ZLIB)
+add_definitions(-DWANT_ZLIB)
+hunter_add_package(ZLIB)
+find_package(ZLIB CONFIG REQUIRED)
 
-include(FindLibXml2)
-find_package(LibXml2 REQUIRED)
-include_directories(${LIBXML2_INCLUDE_DIR})
-list(APPEND libs ${LIBXML2_LIBRARIES})
+hunter_add_package(libxml2)
+find_package(libxml2 CONFIG REQUIRED)
 
 if(MSVC)
     # disable warning on _strncpy (spams the output)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif(MSVC)
-
-configure_file("tmxConfig.cmake.in" "tmxConfig.cmake" @ONLY)
-
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file("tmxConfigVersion.cmake" COMPATIBILITY SameMajorVersion)
 
 #-----------#
 #   Build
@@ -70,6 +65,7 @@ list(APPEND targets tmx)
 
 add_library(tmx STATIC ${SOURCES})
 set_target_properties(tmx PROPERTIES VERSION ${BUILD_VERSION})
+target_link_libraries(tmx PUBLIC ZLIB::zlib ${LIBXML2_LIBRARIES})
 
 set_property(TARGET tmx
              APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
@@ -79,7 +75,7 @@ if(BUILD_SHARED_LIBS)
     list(APPEND targets tmx_shared)
 
     add_library(tmx_shared SHARED ${SOURCES})
-    target_link_libraries(tmx_shared PRIVATE ${libs})
+    target_link_libraries(tmx_shared PRIVATE ZLIB::zlib libxml2::libxml2)
 
     if(MSVC OR CYGWIN OR MINGW)
         target_compile_definitions(tmx_shared
@@ -100,17 +96,49 @@ endif(BUILD_SHARED_LIBS)
 #  Install
 #-----------#
 
-include(GNUInstallDirs)
+set(config_install_dir "lib/cmake/${PROJECT_NAME}")
+set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(version_config "${generated_dir}/${PROJECT_NAME}ConfigVersion.cmake")
+set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
+set(targets_export_name "${PROJECT_NAME}Targets")
+set(namespace "${PROJECT_NAME}::")
 
-install(TARGETS ${targets}
-        EXPORT tmx_exports
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(
+    FILES
+        src/tmx.h
+        src/tmx_utils.h
+        src/tsx.h
+    DESTINATION
+        include
+)
 
-install(EXPORT tmx_exports
-        FILE "tmxExports.cmake"
-        DESTINATION "lib/cmake/tmx")
-install(FILES "${CMAKE_BINARY_DIR}/tmxConfig.cmake" "${CMAKE_BINARY_DIR}/tmxConfigVersion.cmake"
-        DESTINATION "lib/cmake/tmx")
+install(TARGETS tmx
+  EXPORT "${targets_export_name}"
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  FRAMEWORK DESTINATION Library/Frameworks
+)
+
+include(CMakePackageConfigHelpers)
+
+write_basic_package_version_file(
+    "${version_config}" COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(
+    "cmake/Config.cmake.in"
+    "${project_config}"
+    INSTALL_DESTINATION "${config_install_dir}"
+)
+
+install(
+    FILES "${project_config}" "${version_config}"
+    DESTINATION "${config_install_dir}"
+)
+
+install(
+    EXPORT "${targets_export_name}"
+    NAMESPACE "${namespace}"
+    DESTINATION "${config_install_dir}"
+)
